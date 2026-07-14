@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MINESWEEPER: RELOADED</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* === Brand duotone (avoids the black+acid-green default) === */
+    --void:        #0c0e16;
+    --void-2:      #0f1220;
+    --panel:       #141728;
+    --panel-2:     #1a1e34;
+    --panel-3:     #20253f;
+    --line:        #2a2f48;
+    --line-soft:   #1f2338;
+
+    --text-1:      #eef0fa;
+    --text-2:      #9ba1c4;
+    --text-3:      #5e6489;
+
+    --amber:       #ffb04d;
+    --amber-dim:   #6b4a23;
+    --violet:      #9d8cff;
+    --violet-dim:  #3a3470;
+
+    --brand-grad:  linear-gradient(120deg, var(--amber), var(--violet));
+
+    /* category colors — these are functional content-coding, used consistently
+       wherever a modifier is referenced anywhere in the UI */
+    --cat-hazard:    #ff5d6c;
+    --cat-hazard-bg: rgba(255,93,108,.12);
+    --cat-assist:    #4dd9ff;
+    --cat-assist-bg: rgba(77,217,255,.12);
+    --cat-cosmetic:  #c98bff;
+    --cat-cosmetic-bg: rgba(201,139,255,.12);
+    --cat-timewarp:  #ffd24d;
+    --cat-timewarp-bg: rgba(255,210,77,.12);
+    --cat-curse:     #ff4dc4;
+    --cat-curse-bg:  rgba(255,77,196,.12);
+
+    --good:  #5ee6a8;
+    --bad:   #ff5d6c;
+    --neutral: var(--text-3);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+
+    --font-display: 'Rajdhani', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --ease: cubic-bezier(.22,.9,.32,1);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(ellipse 120% 80% at 50% -10%, #1c1f3a 0%, var(--void) 55%) fixed;
+    color: var(--text-1);
+    font-family: var(--font-body);
+    min-height:100vh;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background: var(--violet-dim); color:#fff; }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-track{ background: var(--void-2); }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover{ background: var(--text-3); }
+
+  button{ font-family: inherit; cursor:pointer; }
+  input,select{ font-family: inherit; }
+  :focus-visible{ outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
+
+  .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after{
+    animation-duration: .001s !important;
+    transition-duration: .001s !important;
+  }
+
+  h1,h2,h3{ font-family: var(--font-display); font-weight:700; margin:0; letter-spacing:.02em; }
+
+  .app{ position:relative; min-height:100vh; }
+
+  .screen{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column;
+    opacity:0; pointer-events:none;
+    transform: translateY(8px);
+    transition: opacity .28s var(--ease), transform .32s var(--ease);
+    overflow-y:auto;
+  }
+  .screen.active{
+    opacity:1; pointer-events:auto; transform:none; position:relative;
+  }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--line-soft);
+    background: linear-gradient(180deg, rgba(20,23,40,.7), transparent);
+    backdrop-filter: blur(6px);
+    flex: 0 0 auto;
+  }
+  .topbar .crumb{
+    font-family: var(--font-display); font-size: 14px; letter-spacing:.12em;
+    color: var(--text-2); text-transform:uppercase;
+  }
+  .topbar .crumb b{ color:var(--text-1); }
+  .btn-back{
+    display:flex; align-items:center; gap:8px;
+    background:none; border:1px solid var(--line); color:var(--text-2);
+    padding:8px 16px; border-radius: var(--radius-md);
+    font-size:13px; font-weight:600; transition: all .15s var(--ease);
+  }
+  .btn-back:hover{ border-color: var(--violet); color:var(--text-1); background: var(--panel); }
+
+  .content{ flex:1 1 auto; padding: 28px; max-width: 1180px; width:100%; margin:0 auto; }
+
+  /* ============ Buttons ============ */
+  .btn{
+    font-family: var(--font-display); font-weight:700; font-size:16px; letter-spacing:.04em;
+    padding: 13px 30px; border-radius: var(--radius-md);
+    border: 1px solid var(--line); background: var(--panel);
+    color: var(--text-1);
+    transition: transform .15s var(--ease), border-color .15s var(--ease), background .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  .btn:hover{ transform: translateY(-2px); border-color: var(--violet); box-shadow: 0 8px 24px -10px rgba(157,140,255,.45); }
+  .btn:active{ transform: translateY(0); }
+  .btn.primary{
+    background: var(--brand-grad); color:#1a1023; border:none;
+  }
+  .btn.primary:hover{ box-shadow: 0 10px 28px -8px rgba(255,176,77,.45); }
+  .btn.danger{ border-color: rgba(255,93,108,.4); color: var(--cat-hazard); }
+  .btn.danger:hover{ border-color: var(--cat-hazard); box-shadow:0 8px 24px -10px rgba(255,93,108,.5); }
+  .btn.ghost{ background:none; }
+  .btn.small{ padding: 8px 16px; font-size: 13px; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family: var(--font-mono); font-size:11px; font-weight:600; letter-spacing:.05em;
+    padding: 3px 9px; border-radius: 999px; text-transform:uppercase;
+  }
+  .chip.hazard{ background:var(--cat-hazard-bg); color:var(--cat-hazard); }
+  .chip.assist{ background:var(--cat-assist-bg); color:var(--cat-assist); }
+  .chip.cosmetic{ background:var(--cat-cosmetic-bg); color:var(--cat-cosmetic); }
+  .chip.timewarp{ background:var(--cat-timewarp-bg); color:var(--cat-timewarp); }
+  .chip.curse{ background:var(--cat-curse-bg); color:var(--cat-curse); }
+
+  .toast-wrap{ position:fixed; bottom:22px; right:22px; display:flex; flex-direction:column; gap:10px; z-index:999; }
+  .toast{
+    background: var(--panel-2); border:1px solid var(--line); border-left:3px solid var(--violet);
+    padding: 12px 16px; border-radius: var(--radius-sm); font-size:13px; color:var(--text-1);
+    box-shadow: 0 12px 30px -10px rgba(0,0,0,.6);
+    animation: toastIn .25s var(--ease);
+    max-width:280px;
+  }
+  @keyframes toastIn{ from{opacity:0; transform:translateX(20px);} to{opacity:1; transform:none;} }
+
+  /* ============ Title screen ============ */
+  #screen-title{ align-items:center; justify-content:center; }
+  .title-wrap{
+    position:relative; display:flex; flex-direction:column; align-items:center; gap:42px;
+    padding: 40px;
+  }
+  .ambient-grid{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    display:grid; grid-template-columns:repeat(10,1fr); gap:6px;
+    width:560px; height:280px; z-index:0; opacity:.55; pointer-events:none;
+    mask-image: radial-gradient(ellipse 60% 70% at 50% 50%, black 30%, transparent 75%);
+  }
+  .ambient-cell{
+    background: var(--panel); border:1px solid var(--line-soft); border-radius:3px;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-mono); font-size:13px; font-weight:600;
+    color: var(--text-3); transition: all .6s var(--ease);
+  }
+  .logo-block{ position:relative; z-index:1; text-align:center; }
+  .logo-eyebrow{
+    font-family: var(--font-mono); font-size:12px; letter-spacing:.35em; text-transform:uppercase;
+    color: var(--text-3); margin-bottom:10px;
+  }
+  .logo-main{
+    font-size: 64px; line-height:1; font-weight:700;
+    background: var(--brand-grad); -webkit-background-clip:text; background-clip:text; color:transparent;
+    position:relative; letter-spacing:.01em;
+    text-shadow: none;
+  }
+  .logo-main .crack{
+    display:inline-block; position:relative;
+  }
+  .logo-sub{
+    font-family: var(--font-display); font-size:26px; font-weight:600; letter-spacing:.28em;
+    color: var(--text-1); margin-top:6px;
+    text-shadow: 1px 0 var(--violet), -1px 0 var(--amber);
+  }
+  .title-actions{
+    position:relative; z-index:1;
+    display:flex; gap:14px; flex-wrap:wrap; justify-content:center;
+  }
+  .title-foot{
+    position:relative; z-index:1; font-family: var(--font-mono); font-size:11px; color:var(--text-3);
+    letter-spacing:.08em;
+  }
+  @media (max-width: 680px){
+    .logo-main{ font-size:42px; }
+    .logo-sub{ font-size:17px; letter-spacing:.18em; }
+    .ambient-grid{ width:92vw; height:200px; grid-template-columns:repeat(8,1fr); }
+    .title-actions{ flex-direction:column; width:100%; padding:0 24px; }
+    .title-actions .btn{ width:100%; }
+  }
+
+  /* ============ Config screen ============ */
+  .diff-tabs{ display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap; }
+  .diff-tab{
+    flex:1 1 130px; background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-md);
+    padding:14px 16px; text-align:left; color:var(--text-2); transition: all .15s var(--ease);
+  }
+  .diff-tab b{ display:block; font-family:var(--font-display); font-size:18px; color:var(--text-1); margin-bottom:3px; }
+  .diff-tab span{ font-size:11px; font-family:var(--font-mono); color:var(--text-3); }
+  .diff-tab:hover{ border-color: var(--text-3); }
+  .diff-tab.active{ border-color: var(--violet); background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--violet); }
+  .diff-tab.active b{ color:var(--violet); }
+
+  .custom-panel{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-lg);
+    padding:20px 22px; margin-bottom:22px; display:none;
+  }
+  .custom-panel.show{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:18px; }
+  .field-label{ font-size:12px; font-family:var(--font-mono); color:var(--text-2); display:flex; justify-content:space-between; margin-bottom:8px; }
+  .field-label .val{ color: var(--amber); font-weight:600; }
+  input[type=range]{
+    width:100%; height:5px; border-radius:4px; background: var(--line); appearance:none; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    appearance:none; width:16px; height:16px; border-radius:50%; background: var(--violet);
+    cursor:pointer; border:2px solid #fff2; box-shadow:0 0 0 4px rgba(157,140,255,.18);
+  }
+  input[type=number], input[type=text]{
+    width:100%; background: var(--void-2); border:1px solid var(--line); color:var(--text-1);
+    padding:9px 12px; border-radius: var(--radius-sm); font-size:14px;
+  }
+  input[type=number]:focus, input[type=text]:focus{ border-color: var(--violet); }
+  .mini-note{ font-size:11px; color:var(--text-3); margin-top:6px; }
+
+  .mod-toolbar{ display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+  .search-box{ position:relative; flex:1 1 220px; }
+  .search-box input{ padding-left:34px; }
+  .search-box::before{
+    content:"⌕"; position:absolute; left:11px; top:50%; transform:translateY(-50%);
+    color: var(--text-3); font-size:16px;
+  }
+  .sort-tabs{ display:flex; gap:6px; flex-wrap:wrap; }
+  .sort-tab{
+    background:var(--panel); border:1px solid var(--line); color:var(--text-2);
+    padding:8px 14px; border-radius: var(--radius-md); font-size:12px; font-weight:600;
+    display:flex; align-items:center; gap:6px;
+  }
+  .sort-tab.active{ border-color: var(--violet); color:var(--text-1); background:var(--panel-2); }
+  .sort-tab .dot{ width:7px; height:7px; border-radius:50%; }
+  .sort-tab .dot.inc{ background: var(--bad); }
+  .sort-tab .dot.dec{ background: var(--good); }
+  .sort-tab .dot.neu{ background: var(--neutral); }
+  .sort-tab .dot.fav{ background: var(--amber); }
+
+  .mod-list{
+    height: 360px; overflow-y:auto; border:1px solid var(--line); border-radius: var(--radius-lg);
+    background: var(--void-2); padding:10px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .mod-card{
+    background: var(--panel); border:1px solid var(--line-soft); border-radius: var(--radius-md);
+    padding:12px 14px; display:flex; gap:12px; align-items:flex-start;
+    transition: border-color .15s var(--ease), background .15s var(--ease);
+    position:relative;
+  }
+  .mod-card:hover{ border-color: var(--text-3); }
+  .mod-card.selected{ border-color: var(--violet); background: var(--panel-2); }
+  .mod-card.is-fav::after{
+    content:"★"; position:absolute; top:8px; right:10px; color: var(--amber); font-size:13px;
+  }
+  .mod-check{
+    flex:0 0 auto; width:20px; height:20px; border-radius:5px; border:1px solid var(--line);
+    background: var(--void-2); margin-top:2px; display:flex; align-items:center; justify-content:center; font-size:13px; color:transparent;
+  }
+  .mod-card.selected .mod-check{ background: var(--violet); border-color: var(--violet); color:#1a1023; }
+  .mod-body{ flex:1 1 auto; min-width:0; }
+  .mod-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+  .mod-name{ font-family: var(--font-display); font-weight:600; font-size:15px; color:var(--text-1); }
+  .mod-desc{ font-size:12.5px; color: var(--text-2); line-height:1.45; }
+  .mod-impact{ font-family: var(--font-mono); font-size:11px; font-weight:700; white-space:nowrap; }
+  .mod-impact.inc{ color: var(--bad); }
+  .mod-impact.dec{ color: var(--good); }
+  .mod-impact.neu{ color: var(--neutral); }
+  .mod-live{ font-size:10px; color:var(--amber); font-family:var(--font-mono); margin-left:6px; }
+  .mod-empty{ text-align:center; color:var(--text-3); padding:60px 20px; font-size:13px; }
+
+  .summary-bar{
+    display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;
+    margin-top:18px; padding:16px 20px; background:var(--panel); border:1px solid var(--line); border-radius: var(--radius-lg);
+  }
+  .summary-stats{ display:flex; gap:22px; flex-wrap:wrap; }
+  .stat{ display:flex; flex-direction:column; }
+  .stat .num{ font-family:var(--font-mono); font-size:20px; font-weight:700; color:var(--text-1); }
+  .stat .lbl{ font-size:10.5px; color:var(--text-3); text-transform:uppercase; letter-spacing:.07em; }
+
+  /* ============ Game screen ============ */
+  #screen-game .content{ max-width:none; display:flex; flex-direction:column; align-items:center; padding-top:14px; }
+  .hud{
+    width:100%; max-width:900px; display:flex; justify-content:space-between; align-items:center;
+    gap:10px; margin-bottom:16px; flex-wrap:wrap;
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-lg); padding:12px 18px;
+  }
+  .hud-group{ display:flex; gap:18px; flex-wrap:wrap; }
+  .hud-item{ display:flex; flex-direction:column; align-items:center; min-width:64px; }
+  .hud-item .v{ font-family:var(--font-mono); font-size:19px; font-weight:700; color:var(--text-1); }
+  .hud-item .l{ font-size:9.5px; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em; }
+  .hud-item.warn .v{ color: var(--bad); }
+  .hud-mods{ display:flex; gap:5px; flex-wrap:wrap; max-width:260px; }
+  .hud-mod-dot{
+    width:9px; height:9px; border-radius:50%; cursor:help;
+  }
+  .board-shell{
+    position:relative; padding:14px; background: var(--panel); border:1px solid var(--line);
+    border-radius: var(--radius-lg); display:inline-block; overflow:hidden;
+  }
+  #matrix-canvas{ position:absolute; inset:0; pointer-events:none; opacity:.5; }
+  .board{ display:grid; gap:3px; position:relative; z-index:1; user-select:none; }
+  .tile{
+    width:30px; height:30px; background: var(--panel-3); border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-mono); font-weight:700; font-size:14px;
+    border:1px solid var(--line-soft); transition: background .12s, transform .1s;
+    position:relative;
+  }
+  .tile.hidden-cell{ background: linear-gradient(145deg, var(--panel-3), #232842); cursor:pointer; }
+  .tile.hidden-cell:hover{ filter:brightness(1.18); }
+  .tile.hidden-cell:active{ transform:scale(.93); }
+  .tile.revealed{ background: var(--void-2); border-color: var(--line-soft); cursor:default; }
+  .tile.flagged::after{ content:"⚑"; color: var(--cat-hazard); font-size:15px; }
+  .tile.cracked{ background: linear-gradient(145deg, #2b2030, #241c2c); }
+  .tile.mine-tile{ background: var(--cat-hazard-bg); }
+  .tile.mine-tile::after{ content:"✸"; color: var(--cat-hazard); font-size:15px; }
+  .tile.hint-safe{ box-shadow: inset 0 0 0 2px var(--cat-assist); }
+  .tile .n1{ color:#6fb6ff; } .tile .n2{ color:#7be08a; } .tile .n3{ color:#ff8a7a; }
+  .tile .n4{ color:#b08aff; } .tile .n5{ color:#ffb84d; } .tile .n6{ color:#4fd9d2; }
+  .tile .n7{ color:#e9e9e9; } .tile .n8{ color:#9aa0c2; }
+  .tile.decoder .n1{ color: var(--good) !important; }
+  .tile.fog{ background: var(--void-2) !important; opacity:.18; pointer-events:none; }
+  @keyframes shake{ 10%,90%{transform:translate3d(-1px,0,0);} 20%,80%{transform:translate3d(2px,0,0);}
+    30%,50%,70%{transform:translate3d(-4px,0,0);} 40%,60%{transform:translate3d(4px,0,0);} }
+  .board-shell.shaking{ animation: shake .4s; }
+  .crt .board-shell{ filter: contrast(1.15) brightness(1.05); box-shadow: inset 0 0 60px 10px #000, 0 0 0 9999px rgba(0,0,0,0) ; }
+  .crt .board::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: repeating-linear-gradient(180deg, rgba(255,255,255,.035) 0px, rgba(255,255,255,.035) 1px, transparent 2px, transparent 3px);
+  }
+  .neon .tile.hidden-cell{ box-shadow: 0 0 6px rgba(157,140,255,.35); }
+  .mono-theme .board-shell{ filter: grayscale(1); }
+  .cyber .board-shell{ filter: hue-rotate(180deg) saturate(1.4); }
+  .glitch-fx .tile.revealed{ text-shadow: 1px 0 var(--cat-hazard), -1px 0 var(--cat-assist); }
+  .static-fx .tile.revealed .num-text{ animation: flicker 2.4s infinite; }
+  @keyframes flicker{ 0%,92%,100%{opacity:1;} 94%{opacity:.2;} 96%{opacity:1;} 98%{opacity:.3;} }
+
+  .game-actions{ margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+
+  .modal-veil{
+    position:fixed; inset:0; background:rgba(6,7,14,.78); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; z-index:500;
+    opacity:0; pointer-events:none; transition:opacity .25s var(--ease);
+  }
+  .modal-veil.show{ opacity:1; pointer-events:auto; }
+  .modal-box{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius-lg);
+    padding:32px; width:min(440px,92vw); text-align:center;
+    transform: translateY(14px) scale(.97); transition: transform .25s var(--ease);
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,.6);
+  }
+  .modal-veil.show .modal-box{ transform:none; }
+  .modal-box h2{ font-size:30px; margin-bottom:6px; }
+  .modal-box h2.win{ color: var(--good); } .modal-box h2.lose{ color: var(--bad); }
+  .score-breakdown{ text-align:left; background:var(--void-2); border-radius:var(--radius-md); padding:14px 16px; margin:18px 0; font-family:var(--font-mono); font-size:12.5px; }
+  .score-breakdown div{ display:flex; justify-content:space-between; padding:3px 0; color:var(--text-2); }
+  .score-breakdown div b{ color:var(--text-1); }
+  .score-breakdown .total{ border-top:1px solid var(--line); margin-top:6px; padding-top:8px; font-size:14px; }
+  .score-breakdown .total b{ color: var(--amber); font-size:17px; }
+  .name-input-row{ display:flex; gap:8px; margin:14px 0; }
+  .modal-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px; }
+
+  /* ============ Leaderboard ============ */
+  .lb-filters{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .lb-table{ width:100%; border-collapse:collapse; }
+  .lb-table thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3);
+    padding:10px 14px; border-bottom:1px solid var(--line);
+  }
+  .lb-table tbody tr{ border-bottom:1px solid var(--line-soft); transition:background .12s; }
+  .lb-table tbody tr:hover{ background: var(--panel); }
+  .lb-table td{ padding:12px 14px; font-size:14px; }
+  .lb-rank{ font-family:var(--font-mono); color:var(--text-3); width:36px; }
+  .lb-rank.top1{ color:var(--amber); font-weight:700; }
+  .lb-rank.top2{ color:#c7cbe0; font-weight:700; }
+  .lb-rank.top3{ color:#d09a5e; font-weight:700; }
+  .lb-score{ font-family:var(--font-mono); font-weight:700; color:var(--text-1); }
+  .lb-empty{ text-align:center; padding:70px 20px; color:var(--text-3); }
+  .lb-empty .big{ font-size:40px; margin-bottom:10px; }
+
+  /* ============ Settings ============ */
+  .settings-section{ margin-bottom:30px; }
+  .settings-section h3{
+    font-size:13px; text-transform:uppercase; letter-spacing:.1em; color: var(--violet);
+    margin-bottom:14px; display:flex; align-items:center; gap:10px;
+  }
+  .settings-section h3::after{ content:""; flex:1; height:1px; background: var(--line); }
+  .setting-row{
+    display:flex; justify-content:space-between; align-items:center; gap:16px;
+    padding:13px 16px; background: var(--panel); border:1px solid var(--line-soft); border-radius: var(--radius-md);
+    margin-bottom:8px;
+  }
+  .setting-row .label{ font-size:14px; color: var(--text-1); }
+  .setting-row .desc{ font-size:11.5px; color: var(--text-3); margin-top:2px; }
+  .switch{ position:relative; width:44px; height:24px; flex:0 0 auto; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .switch .track{
+    position:absolute; inset:0; background: var(--line); border-radius:99px; transition: background .2s;
+  }
+  .switch .track::after{
+    content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff;
+    border-radius:50%; transition: transform .2s var(--ease);
+  }
+  .switch input:checked + .track{ background: var(--violet); }
+  .switch input:checked + .track::after{ transform: translateX(20px); }
+  .seg{ display:flex; gap:6px; background:var(--void-2); padding:4px; border-radius:var(--radius-md); }
+  .seg button{
+    border:none; background:none; color:var(--text-2); padding:7px 14px; border-radius:7px; font-size:12.5px; font-weight:600;
+  }
+  .seg button.active{ background: var(--violet); color:#1a1023; }
+  .settings-row-select select{
+    background: var(--void-2); border:1px solid var(--line); color:var(--text-1); padding:8px 12px; border-radius:var(--radius-sm); font-size:13px;
+  }
+  .range-row{ display:flex; align-items:center; gap:12px; flex:0 0 160px; }
+  .range-row input{ flex:1; }
+  .range-row .val{ font-family:var(--font-mono); font-size:12px; color:var(--amber); width:34px; text-align:right; }
+
+  /* ============ Credits ============ */
+  #screen-credits .content{ display:flex; align-items:center; justify-content:center; min-height:70vh; flex-direction:column; }
+  .credits-card{ text-align:center; }
+  .credits-card .role{ font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-3); margin-bottom:6px; }
+  .credits-card .name{ font-family:var(--font-display); font-size:30px; font-weight:700; margin-bottom:28px; background:var(--brand-grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .credits-card .name.ideas{ font-size:24px; }
+
+  /* ============ Shutdown overlay ============ */
+  #shutdown-veil{
+    position:fixed; inset:0; background:#000; z-index:9999; display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .5s ease;
+  }
+  #shutdown-veil.show{ opacity:1; pointer-events:auto; }
+  #shutdown-veil p{ font-family:var(--font-mono); color:var(--cat-assist); font-size:14px; text-align:center; letter-spacing:.05em; }
+
+  @media (max-width:680px){
+    .hud{ font-size:13px; }
+    .content{ padding:18px 14px; }
+  }
+
+  /* ============ Theme variants ============ */
+  body.theme-midnight{ --void:#05060b; --panel:#0c0e1b; --panel-2:#10122422; --panel-3:#15172c; --line:#21243a; }
+  body.theme-highcontrast{ --text-2:#f2f2f2; --text-3:#cfcfcf; --line:#888; --line-soft:#666;
+    --panel:#000; --panel-2:#0a0a0a; --panel-3:#141414; --void:#000; --void-2:#0a0a0a; }
+  body.theme-highcontrast .tile.hidden-cell{ background:#1c1c1c; border:1px solid #999; }
+  body.theme-highcontrast .tile.revealed{ background:#000; border-color:#777; }
+
+  /* ============ Colorblind-friendly numbers (Okabe-Ito inspired) ============ */
+  body.colorblind-numbers .tile .n1{ color:#0072B2 !important; }
+  body.colorblind-numbers .tile .n2{ color:#009E73 !important; }
+  body.colorblind-numbers .tile .n3{ color:#D55E00 !important; }
+  body.colorblind-numbers .tile .n4{ color:#CC79A7 !important; }
+  body.colorblind-numbers .tile .n5{ color:#E69F00 !important; }
+  body.colorblind-numbers .tile .n6{ color:#56B4E9 !important; }
+  body.colorblind-numbers .tile .n7{ color:#F0E442 !important; }
+  body.colorblind-numbers .tile .n8{ color:#FFFFFF !important; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ========== TITLE SCREEN ========== -->
+  <section class="screen active" id="screen-title">
+    <div class="content" style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
+      <div class="title-wrap">
+        <div class="ambient-grid" id="ambientGrid"></div>
+        <div class="logo-block">
+          <div class="logo-eyebrow">// boot sequence complete</div>
+          <div class="logo-main">MINESWEEPER</div>
+          <div class="logo-sub">: RELOADED</div>
+        </div>
+        <div class="title-actions">
+          <button class="btn primary" data-nav="config">Play</button>
+          <button class="btn" data-nav="leaderboard">Leaderboard</button>
+          <button class="btn" data-nav="settings">Settings</button>
+          <button class="btn" data-nav="credits">Credits</button>
+          <button class="btn danger" id="btnQuit">Quit</button>
+        </div>
+        <div class="title-foot">v1.0.0 — every tile remembers</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CONFIG SCREEN ========== -->
+  <section class="screen" id="screen-config">
+    <div class="topbar">
+      <button class="btn-back" data-nav="title">← Main Menu</button>
+      <div class="crumb">Configure <b>Match</b></div>
+      <div style="width:120px;"></div>
+    </div>
+    <div class="content">
+      <div class="diff-tabs" id="diffTabs">
+        <button class="diff-tab" data-diff="easy"><b>Easy</b><span>9×9 · 10 mines</span></button>
+        <button class="diff-tab" data-diff="medium"><b>Medium</b><span>16×16 · 40 mines</span></button>
+        <button class="diff-tab" data-diff="hard"><b>Hard</b><span>30×16 · 99 mines</span></button>
+        <button class="diff-tab" data-diff="custom"><b>Custom</b><span>your rules</span></button>
+      </div>
+
+      <div class="custom-panel" id="customPanel">
+        <div>
+          <div class="field-label"><span>Board Width</span><span class="val" id="valWidth">16</span></div>
+          <input type="range" id="rangeWidth" min="5" max="40" value="16">
+        </div>
+        <div>
+          <div class="field-label"><span>Board Height</span><span class="val" id="valHeight">16</span></div>
+          <input type="range" id="rangeHeight" min="5" max="30" value="16">
+        </div>
+        <div>
+          <div class="field-label"><span>Mine Density ×</span><span class="val" id="valMineMult">1.0x</span></div>
+          <input type="range" id="rangeMineMult" min="0.5" max="3" step="0.1" value="1.0">
+          <div class="mini-note" id="mineCountNote">≈ 40 mines</div>
+        </div>
+        <div>
+          <div class="field-label"><span>Time Limit (sec, 0 = none)</span><span class="val" id="valTimeLimit">0</span></div>
+          <input type="range" id="rangeTimeLimit" min="0" max="600" step="10" value="0">
+        </div>
+      </div>
+
+      <h3 style="margin-bottom:14px;font-size:16px;color:var(--text-2);">Modifiers</h3>
+      <div class="mod-toolbar">
+        <div class="search-box"><input type="text" id="modSearch" placeholder="Search modifiers…"></div>
+        <div class="sort-tabs" id="sortTabs">
+          <button class="sort-tab active" data-sort="all">All</button>
+          <button class="sort-tab" data-sort="increase"><span class="dot inc"></span>Increases score</button>
+          <button class="sort-tab" data-sort="decrease"><span class="dot dec"></span>Decreases score</button>
+          <button class="sort-tab" data-sort="neutral"><span class="dot neu"></span>No difference</button>
+          <button class="sort-tab" data-sort="favorites"><span class="dot fav"></span>★ Favorites</button>
+        </div>
+      </div>
+      <div class="mini-note" style="margin-bottom:10px;">Right-click a modifier to favorite it · ⚡ marks modifiers with a live gameplay effect — the rest still weight your final score.</div>
+      <div class="mod-list" id="modList"></div>
+
+      <div class="summary-bar">
+        <div class="summary-stats">
+          <div class="stat"><span class="num" id="sumSelected">0</span><span class="lbl">Selected Mods</span></div>
+          <div class="stat"><span class="num" id="sumMultiplier">1.00×</span><span class="lbl">Score Multiplier</span></div>
+          <div class="stat"><span class="num" id="sumBoard">16×16</span><span class="lbl">Board</span></div>
+          <div class="stat"><span class="num" id="sumMines">40</span><span class="lbl">Mines</span></div>
+        </div>
+        <button class="btn primary" id="btnStartMatch">Start Match →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== GAME SCREEN ========== -->
+  <section class="screen" id="screen-game">
+    <div class="topbar">
+      <button class="btn-back" id="btnQuitMatch">← Forfeit Match</button>
+      <div class="crumb" id="gameCrumb">Match <b>In Progress</b></div>
+      <button class="btn-back" id="btnPause">Pause</button>
+    </div>
+    <div class="content">
+      <div class="hud">
+        <div class="hud-group">
+          <div class="hud-item"><span class="v" id="hudMines">40</span><span class="l">Mines Left</span></div>
+          <div class="hud-item" id="hudTimerWrap"><span class="v" id="hudTimer">000</span><span class="l">Time</span></div>
+          <div class="hud-item"><span class="v" id="hudScore">0</span><span class="l">Score</span></div>
+          <div class="hud-item"><span class="v" id="hudTiles">0</span><span class="l">Tiles Cleared</span></div>
+        </div>
+        <div class="hud-mods" id="hudMods" title="Active modifiers"></div>
+      </div>
+      <div class="board-shell" id="boardShell">
+        <canvas id="matrix-canvas"></canvas>
+        <div class="board" id="board"></div>
+      </div>
+      <div class="game-actions">
+        <button class="btn small" id="btnMasterKey" style="display:none;">⚡ Use Master Key</button>
+        <button class="btn small" id="btnDataRetrieval" style="display:none;">⚡ Rewind Bad Click</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal-veil" id="endModal">
+    <div class="modal-box">
+      <h2 id="endTitle">You Win</h2>
+      <p id="endSubtitle" style="color:var(--text-2);font-size:13px;">Board fully cleared.</p>
+      <div class="score-breakdown" id="scoreBreakdown"></div>
+      <div class="name-input-row">
+        <input type="text" id="nameInput" placeholder="Enter your name" maxlength="18">
+        <button class="btn primary small" id="btnSubmitScore">Submit</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn small" id="btnPlayAgain">Play Again</button>
+        <button class="btn ghost small" data-nav="title" id="btnToMenu">Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-veil" id="pauseModal">
+    <div class="modal-box">
+      <h2>Paused</h2>
+      <div class="modal-actions" style="margin-top:18px;">
+        <button class="btn primary small" id="btnResume">Resume</button>
+        <button class="btn danger small" id="btnForfeit">Forfeit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== LEADERBOARD SCREEN ========== -->
+  <section class="screen" id="screen-leaderboard">
+    <div class="topbar">
+      <button class="btn-back" data-nav="title">← Main Menu</button>
+      <div class="crumb">Local <b>Leaderboard</b></div>
+      <button class="btn-back" id="btnClearLb">Clear</button>
+    </div>
+    <div class="content">
+      <div class="lb-filters" id="lbFilters">
+        <button class="sort-tab active" data-lbfilter="all">All</button>
+        <button class="sort-tab" data-lbfilter="easy">Easy</button>
+        <button class="sort-tab" data-lbfilter="medium">Medium</button>
+        <button class="sort-tab" data-lbfilter="hard">Hard</button>
+        <button class="sort-tab" data-lbfilter="custom">Custom</button>
+      </div>
+      <div id="lbTableWrap"></div>
+    </div>
+  </section>
+
+  <!-- ========== SETTINGS SCREEN ========== -->
+  <section class="screen" id="screen-settings">
+    <div class="topbar">
+      <button class="btn-back" data-nav="title">← Main Menu</button>
+      <div class="crumb">Game <b>Settings</b></div>
+      <button class="btn-back" id="btnResetSettings">Reset to Default</button>
+    </div>
+    <div class="content" id="settingsContent" style="max-width:760px;"></div>
+  </section>
+
+  <!-- ========== CREDITS SCREEN ========== -->
+  <section class="screen" id="screen-credits">
+    <div class="topbar">
+      <button class="btn-back" data-nav="title">← Main Menu</button>
+      <div class="crumb">Credits</div>
+      <div style="width:120px;"></div>
+    </div>
+    <div class="content">
+      <div class="credits-card">
+        <div class="role">Made by</div>
+        <div class="name">Pixeled</div>
+        <div class="role">Ideas by</div>
+        <div class="name ideas">Burn3d</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+<div id="shutdown-veil"><p id="shutdownText">SYSTEM HALTED.<br>You may close this tab.</p></div>
+
+<script>
+/* =====================================================================
+   STORAGE LAYER
+   Wraps window.storage (persists across sessions inside Claude.ai).
+   Falls back to an in-memory store automatically if window.storage is
+   unavailable (e.g. file opened directly in a plain browser), so the
+   game always works — it just won't remember things between visits.
+===================================================================== */
+const memoryFallback = {};
+let storageIsLive = !!(window.storage && window.storage.get && window.storage.set);
+
+async function storeGet(key, fallback){
+  try{
+    if(storageIsLive){
+      const r = await window.storage.get(key, false);
+      if(r && typeof r.value !== 'undefined') return JSON.parse(r.value);
+      return fallback;
+    }
+  }catch(e){ /* key not found or storage hiccup — fall through */ }
+  if(Object.prototype.hasOwnProperty.call(memoryFallback, key)) return memoryFallback[key];
+  return fallback;
+}
+async function storeSet(key, value){
+  memoryFallback[key] = value;
+  try{
+    if(storageIsLive){
+      const r = await window.storage.set(key, JSON.stringify(value), false);
+      if(!r) storageIsLive = false;
+    }
+  }catch(e){ storageIsLive = false; }
+}
+
+/* =====================================================================
+   TOASTS
+===================================================================== */
+function toast(msg, ms){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(20px)'; el.style.transition='all .3s ease'; setTimeout(()=>el.remove(),300); }, ms||2600);
+}
+
+/* =====================================================================
+   NAVIGATION
+===================================================================== */
+function goTo(screenName){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const target = document.getElementById('screen-'+screenName);
+  if(target) target.classList.add('active');
+  window.scrollTo(0,0);
+  if(screenName === 'leaderboard') renderLeaderboard();
+  if(screenName === 'settings') renderSettings();
+  if(screenName === 'config') renderModList();
+}
+document.addEventListener('click', (e)=>{
+  const navBtn = e.target.closest('[data-nav]');
+  if(navBtn){ goTo(navBtn.getAttribute('data-nav')); }
+});
+
+/* =====================================================================
+   MODIFIER DATA
+   Every modifier carries a category (cosmetic colour-coding used
+   everywhere it's referenced), a description, and a deterministic
+   score-impact multiplier derived from its category + name (so the
+   "increase / decrease / no difference" sort is meaningful and stable
+   across reloads). A curated subset additionally has a real, wired-up
+   gameplay effect — those are flagged with an effectKey and show a ⚡.
+===================================================================== */
+const MODIFIER_RAW = [
+["Volatile Triggers","HAZARD","Detonated cells cascade outward randomly."],
+["Phantom Placements","HAZARD","Mines change positions silently every 30 seconds."],
+["Blinding Light","HAZARD","Uncovered hint indices flicker out instantly."],
+["Unstable Tectonics","HAZARD","Shifts the core grid columns up by one space on misclicks."],
+["Solar Flare","HAZARD","Inverts full screen visibility profiles on flag setting."],
+["Magnetic Pull","HAZARD","Attracts adjacent flags toward clicked areas."],
+["Critical Failure","HAZARD","Revealing a 4-index breaks adjacent logic lines."],
+["Static Noise","HAZARD","Obscures numbers with flickering particles."],
+["Binary Split","HAZARD","Doubles mine indicators upon flagging errors."],
+["Glitch Step","HAZARD","Moves the player's canvas tracking metrics array."],
+["Feedback Loop","HAZARD","Increases standard clearing radius bounds locally."],
+["Aftershock","HAZARD","Triggers artificial screen shaking on all moves."],
+["Fragile Glass","HAZARD","Clicking safe zones reveals random distant zones."],
+["Uncertainty Principle","HAZARD","Hides specific digit readouts behind question marks."],
+["Void Echo","HAZARD","Mines produce silent zones within 2 radial cells."],
+["Toxic Leak","HAZARD","Locks down selection states on adjacent cells."],
+["Seismic Pulse","HAZARD","Scrambles peripheral flagged position markers."],
+["Corrupted Data","HAZARD","Displays hexadecimal readouts instead of normal numbers."],
+["Entropy Matrix","HAZARD","Increases board mine ratios dynamically if unclicked."],
+["Dark Matter","HAZARD","Sucks nearby user inputs into center blocks."],
+["Supernova","HAZARD","Clearing a 5-index detonates a wide radius."],
+["Overdrive Core","HAZARD","Forces automated mouse clicks every 5 seconds."],
+["Faulty Wire","HAZARD","Flagging a mine has a 10% chance to detonate it anyway."],
+["Abyssal Maw","HAZARD","Consumes edge cells permanently if left unchecked."],
+
+["Sonar Pulse","ASSIST","Reveals three non-mine locations on startup."],
+["Safeguard Protocol","ASSIST","Absorbs the first lethal detonation explosion."],
+["Logic Analyzer","ASSIST","Auto-flags completely isolated singular mines."],
+["Clarity Lens","ASSIST","Highlights high-probability cells in soft blue."],
+["Deep Scan","ASSIST","Reveals exact total item content counts across rows."],
+["Nano-Bots","ASSIST","Gradually reveals 1 safe spot every 45 seconds."],
+["Shield Grid","ASSIST","Protects peripheral squares from cascading hazards."],
+["Predictive Sight","ASSIST","Shows your next click result safely via temporary mouse hover indicators."],
+["Data Retrieval","ASSIST","Allows reversing one bad click per level run."],
+["Quantum Link","ASSIST","Revealing an 8 automatically solves all adjacent nodes."],
+["Signal Booster","ASSIST","Highlights valid number links when mouse hovering."],
+["Emergency Release","ASSIST","Clears all empty fields instantly on command."],
+["Thermal Camera","ASSIST","Warm tints hint at hot zones containing high mine densities."],
+["Decoder Ring","ASSIST","Guarantees 1-cells are always rendered green."],
+["Backup Generator","ASSIST","Preserves time meters upon processing hit freezes."],
+["Precision Laser","ASSIST","Safely snipes a chosen single block frame on cooldown."],
+["Grid Mapper","ASSIST","Displays exact quadrants containing zero hazards."],
+["Compass Trace","ASSIST","Points a vector line toward the nearest active threat."],
+["De-Fuser Drone","ASSIST","Instantly clears one flagged spot upon target matching."],
+["Patch Kit","ASSIST","Restores visibility nodes broken by hazard elements."],
+["Flux Stabilizer","ASSIST","Freezes chaotic movement elements on the game map."],
+["Synchronized Sweep","ASSIST","Revealing a corner uncovers all matching edges."],
+["Tuning Fork","ASSIST","Audibly pings when hovering over a hidden threat."],
+["Master Key","ASSIST","Provides a safe opening pass anywhere on the map."],
+
+["Matrix Rain","COSMETIC","Cascades code streams down active tile cells."],
+["Neon Glow","COSMETIC","Illuminates active frame borders with colorful synth lines."],
+["Chrono Trails","COSMETIC","Leaves trailing mouse particle vectors on the game map."],
+["Vintage CRT","COSMETIC","Applies curvature and screen horizontal line filters."],
+["Cyberpunk Palette","COSMETIC","Inverts standard canvas schemes into high-contrast neon."],
+["Gold Leaf","COSMETIC","Turns revealed numbers into elegant metallic shapes."],
+["Midnight Run","COSMETIC","Drapes unrevealed nodes in deep velvet styles."],
+["Vector Display","COSMETIC","Draws all grid borders using thin wireframe strokes."],
+["Pixel Dust","COSMETIC","Causes cleared tiles to explode into beautiful sparkles."],
+["Retro Arcade","COSMETIC","Changes fonts into low-res arcade styling."],
+["Monochrome Minimal","COSMETIC","Renders everything in sharp high-contrast black and white."],
+["Glitch Aesthetic","COSMETIC","Introduces harmless chromatic aberration split offsets."],
+["Liquid Crystals","COSMETIC","Makes cell surfaces ripple gently like water when clicked."],
+["Prism Core","COSMETIC","Cycles the menu system color cycle dynamically over time."],
+["Blueprint Mode","COSMETIC","Overlays structural architectural grid textures."],
+["Stealth Camo","COSMETIC","Blends tile structures directly with backgrounds."],
+["Royal Crest","COSMETIC","Gilds all mine flags with gold trim detailing."],
+["Hologram Projector","COSMETIC","Gives all rendered numbers a subtle 3D projection shift."],
+["Disco Inferno","COSMETIC","Flashing tile patterns react to user game loop beats."],
+["Nebula Sky","COSMETIC","Draws swirling space dust clouds directly behind grids."],
+["Industrial Steel","COSMETIC","Replaces standard cell assets with metallic plates."],
+["Chalkboard Sketch","COSMETIC","Renders UI nodes using hand-drawn texturing styles."],
+["Papercraft Cutouts","COSMETIC","Adds drop-shadow depths underneath grid lines."],
+["Ghostly Whispers","COSMETIC","Fades cell text out dynamically when inputs rest."],
+
+["Time Dilator","TIME-WARP","Slowing click patterns increases timer tracks."],
+["Chronos Paradox","TIME-WARP","Rewinds game clock steps by 5 seconds on triple matches."],
+["Stasis Field","TIME-WARP","Freezes action tracking parameters during flag changes."],
+["Acceleration Drive","TIME-WARP","Speeds up points pacing based on match speed increases."],
+["Hourglass Flip","TIME-WARP","Inverts timer scores completely upon reaching milestones."],
+["Temporal Tear","TIME-WARP","Skips ahead through game frames safely when clicking corners."],
+["Decay Loop","TIME-WARP","Forces rapid clears before cells slowly re-seal over."],
+["Wormhole Jump","TIME-WARP","Links opposite board edge borders directly together."],
+["Overclock Pulse","TIME-WARP","Gives 2x speed bursts followed by immediate freezes."],
+["Ticking Core","TIME-WARP","Explodes the game map if you spend over 20 seconds on one move."],
+["Quantum Leap","TIME-WARP","Teleports user flags randomly across boards safely."],
+["Slow Motion","TIME-WARP","Cuts particle speeds down for hyper-precise tracking."],
+["Fast Forward","TIME-WARP","Runs UI clock meters at double speeds for high multipliers."],
+["Past Shadows","TIME-WARP","Renders faint ghosts of previous run attempts."],
+["Future Sight","TIME-WARP","Flashes brief snapshots of layout solutions every minute."],
+["Time Anchor","TIME-WARP","Locks board states completely for a 10-second window."],
+["Chrono Trigger","TIME-WARP","Speeds up gameplay logic loops every time a 1-cell reveals."],
+["Infinite Loop","TIME-WARP","Resets individual row tracking arrays upon clearing lines."],
+["Event Horizon","TIME-WARP","Distorts timer speed tracking scales relative to mouse distance."],
+["Retrograde Shift","TIME-WARP","Reverses grid coordinate indexing orientations entirely."],
+["Entropy Reverse","TIME-WARP","Converts ticking clock values directly into safe shield steps."],
+["Paradox Engine","TIME-WARP","Swaps the visual layout positions of remaining mines and flags."],
+["Singularity Pulse","TIME-WARP","Freezes screen updating completely for brief split-seconds."],
+["Eternity Lock","TIME-WARP","Stops standard timer tracking loops completely, but doubles mine counts."],
+
+["Babel Curse","CURSE","Scrambles numbers randomly unless tiles match properly."],
+["Blind Faith","CURSE","Removes flag count readouts from control dashboards."],
+["Greed Trap","CURSE","Revealing blocks adds extra mines to neighboring regions."],
+["Paranoia Wave","CURSE","Plays explosive sounds randomly on safe cell clears."],
+["Midas Touch","CURSE","Turns adjacent tiles into gold blocks that require two clicks to break."],
+["Sloth Pace","CURSE","Delays all grid input processing checks by 300ms."],
+["Haunted Code","CURSE","Spawns moving phantom mouse icons to distract you."],
+["Blood Moon","CURSE","Turns the entire screen red and hides clear zones."],
+["Wraith Whisper","CURSE","Fades out adjacent numbers completely if you hover over them too long."],
+["Plague Vector","CURSE","Spreads broken logic nodes across uncovered paths."],
+["Shackled Steps","CURSE","Prevents clicking cells further than 4 units away from your last click."],
+["Mirage Echo","CURSE","Spawns temporary duplicate mine icons across the board layout."],
+["Nightmare Mode","CURSE","Detonating an explosion instantly deletes your highest leaderboard score."],
+["Dread Anchor","CURSE","Weights mouse pointers down heavily near hot threat zones."],
+["Obsidian Skin","CURSE","Locks tiles requiring heavy multi-click combinations to uncover."],
+["Siren Song","CURSE","Highlights safe areas incorrectly with false threat colors."],
+["腐敗 (Decay)","CURSE","Corrupts visual assets until cells are clicked clean."],
+["Grave Mistake","CURSE","Misplacing flags locks your cursor position for 3 seconds."],
+["Doom Counter","CURSE","Every 15 clicks adds a new hidden mine to an empty square."],
+["Iron Maiden","CURSE","Restricts active playable field sizes down to a narrow box."],
+["Web of Lies","CURSE","Randomly swaps '1' and '2' hint digits on the board layout."],
+["Pharaoh's Tomb","CURSE","Revealing a '5' locks all peripheral squares behind stone blockades."],
+["Lost Soul","CURSE","Erases seed tracking IDs, breaking replay matching functionality."],
+["Ragnarok","CURSE","Triggers a full-board shuffle if you take more than 60 seconds on a single turn."]
+];
+
+// curated, real gameplay hooks — id -> effect key consumed by the engine below
+const EFFECT_KEYS = {
+  "faulty-wire":"faultyWire", "supernova":"supernova", "aftershock":"aftershock",
+  "overdrive-core":"overdriveCore", "static-noise":"staticNoise", "critical-failure":"criticalFailure",
+  "sonar-pulse":"sonarPulse", "safeguard-protocol":"safeguardProtocol", "logic-analyzer":"logicAnalyzer",
+  "clarity-lens":"clarityLens", "nano-bots":"nanoBots", "predictive-sight":"predictiveSight",
+  "data-retrieval":"dataRetrieval", "decoder-ring":"decoderRing", "master-key":"masterKey",
+  "tuning-fork":"tuningFork",
+  "matrix-rain":"matrixRain", "neon-glow":"neonGlow", "monochrome-minimal":"monochromeMinimal",
+  "cyberpunk-palette":"cyberpunkPalette", "vintage-crt":"vintageCrt", "glitch-aesthetic":"glitchAesthetic",
+  "stasis-field":"stasisField", "chronos-paradox":"chronosParadox", "ticking-core":"tickingCore",
+  "eternity-lock":"eternityLock",
+  "doom-counter":"doomCounter", "sloth-pace":"slothPace", "blind-faith":"blindFaith",
+  "midas-touch":"midasTouch", "iron-maiden":"ironMaiden", "web-of-lies":"webOfLies"
+};
+
+function slugify(name){ return name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(i))|0; } return Math.abs(h); }
+
+const CATEGORY_BASE = { HAZARD:1.20, ASSIST:0.85, COSMETIC:1.00, "TIME-WARP":1.05, CURSE:1.32 };
+
+const MODIFIERS = MODIFIER_RAW.map(([name, category, description])=>{
+  const id = slugify(name);
+  let multiplier;
+  if(category === 'COSMETIC'){
+    multiplier = 1.00;
+  } else {
+    const variation = ((hashStr(name) % 21) - 10) / 100; // -0.10 .. +0.10
+    multiplier = Math.round((CATEGORY_BASE[category] + variation) * 100) / 100;
+  }
+  const scoreImpact = multiplier > 1.02 ? 'increase' : (multiplier < 0.98 ? 'decrease' : 'neutral');
+  return {
+    id, name, category, description, multiplier, scoreImpact,
+    effectKey: EFFECT_KEYS[id] || null
+  };
+});
+const MODIFIERS_BY_ID = {}; MODIFIERS.forEach(m=>MODIFIERS_BY_ID[m.id]=m);
+
+/* =====================================================================
+   APP STATE
+===================================================================== */
+const DIFFICULTY_PRESETS = {
+  easy:   { w:9,  h:9,  mines:10, label:'Easy',   diffMult:1.0 },
+  medium: { w:16, h:16, mines:40, label:'Medium', diffMult:1.5 },
+  hard:   { w:30, h:16, mines:99, label:'Hard',   diffMult:2.2 },
+};
+
+const state = {
+  favorites: new Set(),
+  selectedMods: new Set(),
+  activeSort: 'all',
+  searchTerm: '',
+  difficulty: 'easy',
+  custom: { w:16, h:16, mineMult:1.0, timeLimit:0 },
+  settings: defaultSettings(),
+};
+
+function defaultSettings(){
+  return {
+    soundOn: true,
+    volume: 60,
+    theme: 'void',          // void | midnight | highcontrast
+    animations: true,
+    reduceMotion: false,
+    confirmFlag: false,
+    leftClickMode: 'reveal', // reveal | flag  (which action left-click performs; right click = the other)
+    safeFirstClick: true,
+    colorblindNumbers: false,
+    largeText: false,
+    showTimer: true,
+    autoSaveScore: false,
+  };
+}
+
+async function loadPersisted(){
+  const favs = await storeGet('favorites', []);
+  state.favorites = new Set(favs);
+  const savedSettings = await storeGet('settings', null);
+  if(savedSettings) state.settings = Object.assign(defaultSettings(), savedSettings);
+  applySettingsToDOM();
+}
+async function saveFavorites(){ await storeSet('favorites', Array.from(state.favorites)); }
+async function saveSettings(){ await storeSet('settings', state.settings); }
+
+function applySettingsToDOM(){
+  document.body.classList.toggle('reduce-motion', state.settings.reduceMotion || !state.settings.animations);
+  document.body.style.fontSize = state.settings.largeText ? '17px' : '';
+  document.body.classList.remove('theme-void','theme-midnight','theme-highcontrast');
+  document.body.classList.add('theme-' + state.settings.theme);
+  document.body.classList.toggle('colorblind-numbers', !!state.settings.colorblindNumbers);
+  const timerWrap = document.getElementById('hudTimerWrap');
+  if(timerWrap) timerWrap.style.display = state.settings.showTimer ? '' : 'none';
+}
+
+/* =====================================================================
+   CONFIG SCREEN — difficulty tabs + custom panel
+===================================================================== */
+document.querySelectorAll('.diff-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.diff-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    state.difficulty = tab.getAttribute('data-diff');
+    document.getElementById('customPanel').classList.toggle('show', state.difficulty === 'custom');
+    updateSummaryBar();
+  });
+});
+document.querySelector('.diff-tab[data-diff="easy"]').classList.add('active');
+
+function wireRange(rangeId, valId, fmt, onChange){
+  const r = document.getElementById(rangeId), v = document.getElementById(valId);
+  r.addEventListener('input', ()=>{ v.textContent = fmt(r.value); onChange(parseFloat(r.value)); updateSummaryBar(); });
+}
+wireRange('rangeWidth','valWidth', x=>x, v=>state.custom.w=Math.round(v));
+wireRange('rangeHeight','valHeight', x=>x, v=>state.custom.h=Math.round(v));
+wireRange('rangeMineMult','valMineMult', x=>parseFloat(x).toFixed(1)+'x', v=>state.custom.mineMult=v);
+wireRange('rangeTimeLimit','valTimeLimit', x=>(x==='0'?'No limit':x+'s'), v=>state.custom.timeLimit=Math.round(v));
+
+function currentBoardSpec(){
+  if(state.difficulty === 'custom'){
+    const w = state.custom.w, h = state.custom.h;
+    const baseDensity = 0.15 * state.custom.mineMult;
+    const mines = Math.max(1, Math.min(w*h - 9, Math.round(w*h*baseDensity)));
+    return { w, h, mines, label:'Custom', diffMult: 1.0 + (state.custom.mineMult-1)*0.6, timeLimit: state.custom.timeLimit };
+  }
+  const p = DIFFICULTY_PRESETS[state.difficulty];
+  return Object.assign({timeLimit:0}, p);
+}
+
+function combinedModifierMultiplier(){
+  let total = 1;
+  state.selectedMods.forEach(id=>{
+    const m = MODIFIERS_BY_ID[id];
+    if(m) total += (m.multiplier - 1);
+  });
+  return Math.max(0.1, Math.round(total*100)/100);
+}
+
+function updateSummaryBar(){
+  const spec = currentBoardSpec();
+  document.getElementById('sumSelected').textContent = state.selectedMods.size;
+  document.getElementById('sumMultiplier').textContent = combinedModifierMultiplier().toFixed(2)+'×';
+  document.getElementById('sumBoard').textContent = spec.w+'×'+spec.h;
+  document.getElementById('sumMines').textContent = spec.mines;
+  const note = document.getElementById('mineCountNote');
+  if(note) note.textContent = '≈ ' + spec.mines + ' mines';
+}
+
+/* =====================================================================
+   CONFIG SCREEN — modifier browser (search / sort / favorite / select)
+===================================================================== */
+function renderModList(){
+  const listEl = document.getElementById('modList');
+  const term = state.searchTerm.trim().toLowerCase();
+  let items = MODIFIERS.filter(m=>{
+    if(term && !(m.name.toLowerCase().includes(term) || m.description.toLowerCase().includes(term) || m.category.toLowerCase().includes(term))) return false;
+    if(state.activeSort === 'increase') return m.scoreImpact === 'increase';
+    if(state.activeSort === 'decrease') return m.scoreImpact === 'decrease';
+    if(state.activeSort === 'neutral') return m.scoreImpact === 'neutral';
+    if(state.activeSort === 'favorites') return state.favorites.has(m.id);
+    return true;
+  });
+  // favorites always float to top within current view
+  items = items.slice().sort((a,b)=>{
+    const fa = state.favorites.has(a.id)?0:1, fb = state.favorites.has(b.id)?0:1;
+    if(fa !== fb) return fa-fb;
+    return b.multiplier - a.multiplier;
+  });
+
+  if(items.length === 0){
+    listEl.innerHTML = '<div class="mod-empty">No modifiers match that search.</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map(m=>{
+    const catClass = m.category.toLowerCase().replace('time-warp','timewarp');
+    const isSel = state.selectedMods.has(m.id);
+    const isFav = state.favorites.has(m.id);
+    const impactLabel = m.scoreImpact === 'increase' ? ('+'+Math.round((m.multiplier-1)*100)+'%') :
+                         m.scoreImpact === 'decrease' ? ('-'+Math.round((1-m.multiplier)*100)+'%') : '0%';
+    return `<div class="mod-card ${isSel?'selected':''} ${isFav?'is-fav':''}" data-id="${m.id}">
+      <div class="mod-check">${isSel?'✓':''}</div>
+      <div class="mod-body">
+        <div class="mod-head">
+          <span class="mod-name">${m.name}</span>
+          <span class="chip ${catClass}">${m.category}</span>
+          <span class="mod-impact ${m.scoreImpact==='increase'?'inc':m.scoreImpact==='decrease'?'dec':'neu'}">${impactLabel}</span>
+          ${m.effectKey ? '<span class="mod-live">⚡ live effect</span>' : ''}
+        </div>
+        <div class="mod-desc">${m.description}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('modSearch').addEventListener('input', (e)=>{ state.searchTerm = e.target.value; renderModList(); });
+
+document.getElementById('sortTabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.sort-tab'); if(!btn) return;
+  document.querySelectorAll('#sortTabs .sort-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  state.activeSort = btn.getAttribute('data-sort');
+  renderModList();
+});
+
+document.getElementById('modList').addEventListener('click', (e)=>{
+  const card = e.target.closest('.mod-card'); if(!card) return;
+  const id = card.getAttribute('data-id');
+  if(state.selectedMods.has(id)) state.selectedMods.delete(id); else state.selectedMods.add(id);
+  renderModList();
+  updateSummaryBar();
+});
+
+document.getElementById('modList').addEventListener('contextmenu', (e)=>{
+  const card = e.target.closest('.mod-card'); if(!card) return;
+  e.preventDefault();
+  const id = card.getAttribute('data-id');
+  if(state.favorites.has(id)){ state.favorites.delete(id); toast('Removed from favorites'); }
+  else { state.favorites.add(id); toast('★ Favorited — ' + MODIFIERS_BY_ID[id].name); }
+  saveFavorites();
+  renderModList();
+});
+
+/* =====================================================================
+   GAME ENGINE
+===================================================================== */
+const game = {
+  w:0, h:0, mineCount:0, grid:null, // grid[y][x] = {mine,revealed,flagged,adjacent,cracked}
+  firstClickDone:false, started:false, over:false,
+  tilesRevealed:0, totalSafeTiles:0, flagsPlaced:0,
+  timer:0, timerHandle:null, timeLimit:0,
+  diffSpec:null, mods:[], effects:{}, score:0,
+  shieldUsed:false, masterKeyUsed:false, lastClickTime:0, clicksSinceDoom:0,
+  rewindSnapshot:null, lastMoveTimestamp:0, paused:false,
+  matrixCtx:null, matrixHandle:null,
+};
+
+function inBounds(x,y){ return x>=0 && y>=0 && x<game.w && y<game.h; }
+function neighbors(x,y){
+  const out=[];
+  for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+    if(dx===0 && dy===0) continue;
+    if(inBounds(x+dx,y+dy)) out.push([x+dx,y+dy]);
+  }
+  return out;
+}
+
+function buildEmptyGrid(w,h){
+  const g = [];
+  for(let y=0;y<h;y++){
+    const row=[];
+    for(let x=0;x<w;x++) row.push({mine:false,revealed:false,flagged:false,adjacent:0,cracked:false});
+    g.push(row);
+  }
+  return g;
+}
+
+function placeMines(excludeX, excludeY){
+  let placed = 0;
+  const exclude = new Set();
+  if(game.effects.safeFirstClick !== false){
+    neighbors(excludeX,excludeY).forEach(([x,y])=>exclude.add(x+','+y));
+    exclude.add(excludeX+','+excludeY);
+  } else {
+    exclude.add(excludeX+','+excludeY);
+  }
+  let guard = 0;
+  while(placed < game.mineCount && guard < 100000){
+    guard++;
+    const x = Math.floor(Math.random()*game.w);
+    const y = Math.floor(Math.random()*game.h);
+    if(exclude.has(x+','+y)) continue;
+    if(game.grid[y][x].mine) continue;
+    game.grid[y][x].mine = true;
+    placed++;
+  }
+  for(let y=0;y<game.h;y++) for(let x=0;x<game.w;x++){
+    if(game.grid[y][x].mine) continue;
+    let c=0;
+    neighbors(x,y).forEach(([nx,ny])=>{ if(game.grid[ny][nx].mine) c++; });
+    game.grid[y][x].adjacent = c;
+  }
+}
+
+function startMatch(){
+  const spec = currentBoardSpec();
+  game.w = spec.w; game.h = spec.h; game.diffSpec = spec;
+  game.timeLimit = spec.timeLimit || 0;
+
+  game.mods = Array.from(state.selectedMods).map(id=>MODIFIERS_BY_ID[id]).filter(Boolean);
+  game.effects = {};
+  game.mods.forEach(m=>{ if(m.effectKey) game.effects[m.effectKey] = true; });
+  game.effects.safeFirstClick = state.settings.safeFirstClick;
+
+  game.mineCount = spec.mines;
+  if(game.effects.eternityLock){
+    game.mineCount = Math.min(game.w*game.h - 9, game.mineCount*2);
+    game.timeLimit = 0;
+  }
+
+  game.grid = buildEmptyGrid(game.w, game.h);
+  game.firstClickDone = false; game.started = true; game.over = false; game.paused=false;
+  game.tilesRevealed = 0; game.flagsPlaced = 0;
+  game.totalSafeTiles = game.w*game.h - game.mineCount;
+  game.timer = 0; game.score = 0; game.shieldUsed=false; game.masterKeyUsed=false; game.clicksSinceDoom=0;
+  game.rewindSnapshot = null; game.rewindUsed=false; game.safeStreak=0; game.freezeUntil=0;
+  game.lastMoveTimestamp = Date.now();
+
+  applyCosmeticEffects();
+  renderHudMods();
+  document.getElementById('btnMasterKey').style.display = game.effects.masterKey ? 'inline-block' : 'none';
+  document.getElementById('btnMasterKey').disabled = false;
+  document.getElementById('btnMasterKey').textContent = '⚡ Use Master Key';
+  const drBtn = document.getElementById('btnDataRetrieval');
+  if(game.effects.dataRetrieval){ drBtn.style.display = 'inline-block'; drBtn.disabled = true; drBtn.textContent = '🛟 Data Retrieval: Ready'; }
+  else { drBtn.style.display = 'none'; }
+
+  buildBoardDOM();
+  updateHud();
+  goTo('game');
+  startTimerLoop();
+  startModifierTimers();
+
+  if(game.effects.sonarPulse){
+    game._pendingSonar = true;
+  }
+}
+
+function applyCosmeticEffects(){
+  const shell = document.getElementById('boardShell');
+  shell.className = 'board-shell';
+  document.body.classList.remove('crt','neon','mono-theme','cyber','glitch-fx','static-fx');
+  stopMatrixRain();
+  if(game.effects.vintageCrt) document.body.classList.add('crt');
+  if(game.effects.neonGlow) document.body.classList.add('neon');
+  if(game.effects.monochromeMinimal) document.body.classList.add('mono-theme');
+  if(game.effects.cyberpunkPalette) document.body.classList.add('cyber');
+  if(game.effects.glitchAesthetic) document.body.classList.add('glitch-fx');
+  if(game.effects.staticNoise) document.body.classList.add('static-fx');
+  if(game.effects.matrixRain) startMatrixRain();
+}
+
+function renderHudMods(){
+  const wrap = document.getElementById('hudMods');
+  wrap.innerHTML = game.mods.map(m=>{
+    const catClass = m.category.toLowerCase().replace('time-warp','timewarp');
+    return `<div class="hud-mod-dot chip ${catClass}" title="${m.name}: ${m.description}" style="width:auto;padding:2px 8px;">${m.name}${m.effectKey?' ⚡':''}</div>`;
+  }).join('');
+}
+
+function computeIronMaidenWindow(){
+  const winW = Math.max(5, Math.round(game.w*0.55));
+  const winH = Math.max(5, Math.round(game.h*0.55));
+  const x0 = Math.floor((game.w-winW)/2), y0 = Math.floor((game.h-winH)/2);
+  return {x0, x1:x0+winW, y0, y1:y0+winH};
+}
+
+function buildBoardDOM(){
+  const board = document.getElementById('board');
+  const maxBoardWidthPx = Math.min(window.innerWidth - 60, 900);
+  let tileSize = 30;
+  if(game.w * 33 > maxBoardWidthPx){ tileSize = Math.max(13, Math.floor(maxBoardWidthPx / game.w) - 3); }
+  board.style.gridTemplateColumns = `repeat(${game.w}, ${tileSize}px)`;
+  board.innerHTML = '';
+  board.classList.toggle('decoder', !!game.effects.decoderRing);
+  const ironWin = game.effects.ironMaiden ? computeIronMaidenWindow() : null;
+  const frag = document.createDocumentFragment();
+  for(let y=0;y<game.h;y++){
+    for(let x=0;x<game.w;x++){
+      const t = document.createElement('div');
+      t.className = 'tile hidden-cell';
+      t.style.width = tileSize+'px'; t.style.height = tileSize+'px'; t.style.fontSize = Math.max(10,tileSize*0.46)+'px';
+      t.dataset.x = x; t.dataset.y = y;
+      if(ironWin && !(x>=ironWin.x0 && x<ironWin.x1 && y>=ironWin.y0 && y<ironWin.y1)) t.classList.add('fog');
+      frag.appendChild(t);
+    }
+  }
+  board.appendChild(frag);
+}
+
+function renderTile(x,y){
+  const cell = game.grid[y][x];
+  const el = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
+  if(!el) return;
+  const wasFog = el.classList.contains('fog');
+  el.className = 'tile' + (wasFog ? ' fog' : '');
+  el.innerHTML = '';
+  if(cell.flagged && !cell.revealed){ el.classList.add('hidden-cell','flagged'); return; }
+  if(!cell.revealed){
+    el.classList.add('hidden-cell');
+    if(cell.cracked) el.classList.add('cracked');
+    return;
+  }
+  el.classList.add('revealed');
+  if(cell.mine){
+    el.classList.add('mine-tile');
+    if(cell.defused) el.innerHTML = '<span style="color:var(--cat-assist)">🛡</span>';
+    return;
+  }
+  if(cell.adjacent > 0){
+    let num = cell.adjacent;
+    if(game.effects.webOfLies){ if(num===1) num=2; else if(num===2) num=1; }
+    const span = document.createElement('span');
+    span.className = 'num-text n'+num;
+    span.textContent = num;
+    el.appendChild(span);
+  }
+}
+function renderAllTiles(){ for(let y=0;y<game.h;y++) for(let x=0;x<game.w;x++) renderTile(x,y); }
+
+/* ---- input handlers (delegated on the board) ---- */
+document.getElementById('board').addEventListener('click', (e)=>{
+  if(!game.started || game.over || game.paused) return;
+  const tile = e.target.closest('.tile'); if(!tile) return;
+  const x = +tile.dataset.x, y = +tile.dataset.y;
+  if(state.settings.leftClickMode === 'flag') handleFlagAction(x,y); else handleRevealAction(x,y);
+});
+document.getElementById('board').addEventListener('contextmenu', (e)=>{
+  e.preventDefault();
+  if(!game.started || game.over || game.paused) return;
+  const tile = e.target.closest('.tile'); if(!tile) return;
+  const x = +tile.dataset.x, y = +tile.dataset.y;
+  if(state.settings.leftClickMode === 'flag') handleRevealAction(x,y); else handleFlagAction(x,y);
+});
+document.getElementById('board').addEventListener('mouseover', (e)=>{
+  const tile = e.target.closest('.tile'); if(!tile) return;
+  handleHover(+tile.dataset.x, +tile.dataset.y);
+});
+document.getElementById('board').addEventListener('mouseleave', ()=>{
+  document.querySelectorAll('.ghost-preview').forEach(g=>g.remove());
+});
+
+function handleFlagAction(x,y){
+  const cell = game.grid[y]?.[x]; if(!cell || cell.revealed) return;
+  if(state.settings.confirmFlag && !cell.flagged && !confirm('Place a flag here?')) return;
+  cell.flagged = !cell.flagged;
+  game.flagsPlaced += cell.flagged ? 1 : -1;
+  game.safeStreak = 0;
+  if(cell.flagged && cell.mine && game.firstClickDone && game.effects.faultyWire && Math.random() < 0.10){
+    toast('⚡ Faulty Wire misfired!');
+    detonateMine(x,y);
+    return;
+  }
+  if(game.effects.stasisField) game.freezeUntil = Date.now() + 1000;
+  if(game.effects.aftershock) triggerShake();
+  renderTile(x,y);
+  updateHud();
+  if(game.effects.clarityLens) computeSafeHints();
+}
+
+function handleRevealAction(x,y){
+  if(game.effects.slothPace) setTimeout(()=>performReveal(x,y), 300);
+  else performReveal(x,y);
+}
+
+function performReveal(x,y){
+  if(game.over) return;
+  const cell = game.grid[y]?.[x]; if(!cell || cell.revealed || cell.flagged) return;
+
+  if(game.effects.midasTouch && cell.cracked){
+    cell.cracked = false;
+    renderTile(x,y);
+    return;
+  }
+
+  if(!game.firstClickDone){
+    placeMines(x,y);
+    game.firstClickDone = true;
+    if(game.effects.logicAnalyzer) autoFlagIsolatedMines();
+    if(game._pendingSonar){ doSonarPulse(x,y); game._pendingSonar = false; }
+  }
+
+  if(game.effects.dataRetrieval && !game.rewindUsed) game.rewindSnapshot = snapshotGrid();
+
+  game.lastMoveTimestamp = Date.now();
+  game.clicksSinceDoom++;
+  if(game.effects.doomCounter && game.clicksSinceDoom >= 15){ game.clicksSinceDoom = 0; addRandomMine(); }
+
+  if(cell.mine){
+    if(game.effects.safeguardProtocol && !game.shieldUsed){
+      game.shieldUsed = true; cell.revealed = true; cell.defused = true;
+      renderTile(x,y); toast('🛡 Safeguard Protocol absorbed the blast!');
+      game.safeStreak = 0;
+      if(game.effects.aftershock) triggerShake();
+      updateHud();
+      return;
+    }
+    if(game.effects.dataRetrieval && !game.rewindUsed && game.rewindSnapshot){
+      game.rewindUsed = true;
+      restoreSnapshot(game.rewindSnapshot);
+      toast('⏪ Data Retrieval rewound that click!');
+      const drBtn = document.getElementById('btnDataRetrieval');
+      drBtn.textContent = '⚡ Rewind Used'; drBtn.disabled = true;
+      return;
+    }
+    detonateMine(x,y);
+    return;
+  }
+
+  floodReveal(x,y);
+  if(game.effects.criticalFailure && cell.adjacent === 4) triggerCriticalFailure(x,y);
+  if(game.effects.supernova && cell.adjacent === 5) triggerSupernova(x,y);
+  if(game.effects.aftershock) triggerShake();
+  if(game.effects.chronosParadox) handleChronosCombo();
+
+  updateHud();
+  if(game.effects.clarityLens) computeSafeHints();
+  if(checkWinCondition()) winGame();
+}
+
+function floodReveal(startX, startY){
+  const stack = [[startX,startY]];
+  const seen = new Set();
+  while(stack.length){
+    const [x,y] = stack.pop();
+    const key = x+','+y; if(seen.has(key)) continue; seen.add(key);
+    const cell = game.grid[y][x];
+    if(cell.revealed || cell.flagged) continue;
+    cell.revealed = true; cell.cracked = false;
+    game.tilesRevealed++;
+    renderTile(x,y);
+    if(game.effects.midasTouch){
+      neighbors(x,y).forEach(([nx,ny])=>{
+        const nc = game.grid[ny][nx];
+        if(!nc.revealed && !nc.mine && !nc.cracked && !nc.flagged){ nc.cracked = true; renderTile(nx,ny); }
+      });
+    }
+    if(cell.adjacent === 0 && !cell.mine){
+      neighbors(x,y).forEach(([nx,ny])=>{ if(!game.grid[ny][nx].revealed) stack.push([nx,ny]); });
+    }
+  }
+}
+
+function checkWinCondition(){ return game.tilesRevealed >= game.totalSafeTiles; }
+
+function detonateMine(x,y){
+  game.grid[y][x].revealed = true;
+  for(let yy=0; yy<game.h; yy++) for(let xx=0; xx<game.w; xx++){ if(game.grid[yy][xx].mine) game.grid[yy][xx].revealed = true; }
+  renderAllTiles();
+  loseGame();
+}
+
+function triggerShake(){
+  const shell = document.getElementById('boardShell');
+  shell.classList.remove('shaking');
+  void shell.offsetWidth;
+  shell.classList.add('shaking');
+}
+
+function snapshotGrid(){
+  return { grid: game.grid.map(row=>row.map(c=>({...c}))), tilesRevealed: game.tilesRevealed, flagsPlaced: game.flagsPlaced };
+}
+function restoreSnapshot(s){
+  game.grid = s.grid.map(row=>row.map(c=>({...c})));
+  game.tilesRevealed = s.tilesRevealed;
+  game.flagsPlaced = s.flagsPlaced;
+  renderAllTiles();
+  updateHud();
+}
+
+function computeSafeHints(){
+  document.querySelectorAll('.tile.hint-safe').forEach(t=>t.classList.remove('hint-safe'));
+  for(let y=0;y<game.h;y++) for(let x=0;x<game.w;x++){
+    const c = game.grid[y][x];
+    if(!c.revealed || c.mine || c.adjacent===0) continue;
+    const nbrs = neighbors(x,y);
+    const flaggedCount = nbrs.filter(([nx,ny])=>game.grid[ny][nx].flagged).length;
+    if(flaggedCount === c.adjacent){
+      nbrs.forEach(([nx,ny])=>{
+        const nc = game.grid[ny][nx];
+        if(!nc.revealed && !nc.flagged){
+          const el = document.querySelector(`.tile[data-x="${nx}"][data-y="${ny}"]`);
+          if(el) el.classList.add('hint-safe');
+        }
+      });
+    }
+  }
+}
+
+function triggerCriticalFailure(x,y){
+  const affected = [];
+  neighbors(x,y).forEach(([nx,ny])=>{
+    const c = game.grid[ny][nx];
+    if(c.revealed && !c.mine && c.adjacent>0){
+      const el = document.querySelector(`.tile[data-x="${nx}"][data-y="${ny}"]`);
+      if(el){ affected.push(el); el.dataset.prevHTML = el.innerHTML; el.innerHTML = '<span style="color:var(--text-3)">?</span>'; }
+    }
+  });
+  if(affected.length){
+    toast('💥 Critical Failure scrambled nearby logic!');
+    setTimeout(()=>{ affected.forEach(el=>{ el.innerHTML = el.dataset.prevHTML || ''; }); }, 3000);
+  }
+}
+
+function triggerSupernova(cx,cy){
+  toast('☀ Supernova! Clearing a wide radius...');
+  for(let dy=-2; dy<=2; dy++) for(let dx=-2; dx<=2; dx++){
+    const x=cx+dx, y=cy+dy; if(!inBounds(x,y)) continue;
+    const c = game.grid[y][x];
+    if(c.revealed || c.flagged) continue;
+    if(c.mine){ detonateMine(x,y); return; }
+    floodReveal(x,y);
+  }
+  updateHud();
+  if(checkWinCondition()) winGame();
+}
+
+function handleChronosCombo(){
+  game.safeStreak = (game.safeStreak||0) + 1;
+  if(game.safeStreak % 3 === 0){
+    game.timer = Math.max(0, game.timer - 5);
+    toast('⏪ Chronos Paradox rewound the clock by 5s!');
+    updateHud();
+  }
+}
+
+function doSonarPulse(excludeX, excludeY){
+  let revealedCount = 0, guard = 0;
+  while(revealedCount < 3 && guard < 500){
+    guard++;
+    const spot = randomHiddenSafeCell();
+    if(!spot) break;
+    if(spot[0]===excludeX && spot[1]===excludeY) continue;
+    floodReveal(spot[0], spot[1]);
+    revealedCount++;
+  }
+  if(revealedCount>0) toast('📡 Sonar Pulse revealed '+revealedCount+' safe spots');
+  updateHud();
+}
+
+function autoFlagIsolatedMines(){
+  let count = 0;
+  for(let y=0;y<game.h;y++) for(let x=0;x<game.w;x++){
+    const c = game.grid[y][x]; if(!c.mine) continue;
+    const nbrs = neighbors(x,y);
+    if(nbrs.length>0 && nbrs.every(([nx,ny])=>game.grid[ny][nx].mine)){
+      c.flagged = true; game.flagsPlaced++; count++; renderTile(x,y);
+    }
+  }
+  if(count>0) toast(`🔍 Logic Analyzer flagged ${count} isolated mine(s)`);
+}
+
+function addRandomMine(){
+  const opts = [];
+  for(let y=0;y<game.h;y++) for(let x=0;x<game.w;x++){
+    const c = game.grid[y][x]; if(!c.revealed && !c.flagged && !c.mine) opts.push([x,y]);
+  }
+  if(!opts.length) return;
+  const [x,y] = opts[Math.floor(Math.random()*opts.length)];
+  game.grid[y][x].mine = true;
+  game.mineCount++;
+  recomputeAdjacency();
+  toast('☣ Doom Counter planted a new mine...');
+  updateHud();
+}
+function recomputeAdjacency(){
+  for(let y=0;y<game.h;y++) for(let x=0;x<game.w;x++){
+    if(game.grid[y][x].mine){ continue; }
+    let c=0; neighbors(x,y).forEach(([nx,ny])=>{ if(game.grid[ny][nx].mine) c++; });
+    game.grid[y][x].adjacent = c;
+  }
+}
+
+function randomHiddenSafeCell(){
+  const opts=[];
+  for(let y=0;y<game.h;y++) for(let x=0;x<game.w;x++){ const c=game.grid[y][x]; if(!c.revealed && !c.flagged && !c.mine) opts.push([x,y]); }
+  if(!opts.length) return null;
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+function randomHiddenCellAny(){
+  const opts=[];
+  for(let y=0;y<game.h;y++) for(let x=0;x<game.w;x++){ const c=game.grid[y][x]; if(!c.revealed && !c.flagged) opts.push([x,y]); }
+  if(!opts.length) return null;
+  return opts[Math.floor(Math.random()*opts.length)];
+}
+
+/* ---- audio + hover effects ---- */
+let audioCtx = null;
+function beep(freq, dur){
+  if(!state.settings.soundOn) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.frequency.value = freq; osc.type = 'sine';
+    gain.gain.value = (state.settings.volume/100) * 0.12;
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + (dur||0.12));
+  }catch(e){}
+}
+let lastBeepAt = 0;
+function handleHover(x,y){
+  if(!game.firstClickDone || game.over) return;
+  const cell = game.grid[y]?.[x]; if(!cell) return;
+  if(game.effects.tuningFork && !cell.revealed){
+    const near = cell.mine || neighbors(x,y).some(([nx,ny])=>game.grid[ny][nx].mine);
+    if(near && Date.now()-lastBeepAt > 350){ beep(880,0.07); lastBeepAt = Date.now(); }
+  }
+  if(game.effects.predictiveSight && !cell.revealed && !cell.flagged){
+    document.querySelectorAll('.ghost-preview').forEach(g=>g.remove());
+    const el = document.querySelector(`.tile[data-x="${x}"][data-y="${y}"]`);
+    if(el){
+      const ghost = document.createElement('span');
+      ghost.className = 'ghost-preview';
+      ghost.style.position='absolute'; ghost.style.opacity='.6'; ghost.style.fontSize='11px';
+      ghost.style.bottom='1px'; ghost.style.right='2px';
+      ghost.textContent = cell.mine ? '✸' : (cell.adjacent || '·');
+      ghost.style.color = cell.mine ? 'var(--cat-hazard)' : 'var(--cat-assist)';
+      el.appendChild(ghost);
+    }
+  }
+}
+
+/* ---- Matrix Rain cosmetic ---- */
+function startMatrixRain(){
+  const canvas = document.getElementById('matrix-canvas');
+  const shell = document.getElementById('boardShell');
+  canvas.width = shell.clientWidth; canvas.height = shell.clientHeight;
+  const ctx = canvas.getContext('2d');
+  const cols = Math.floor(canvas.width/14);
+  const drops = new Array(cols).fill(0);
+  const chars = '01アイウエオカキクケコ#$%&アイ01';
+  function draw(){
+    ctx.fillStyle = 'rgba(12,14,22,0.18)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#9d8cff55';
+    ctx.font = '13px monospace';
+    for(let i=0;i<drops.length;i++){
+      const text = chars[Math.floor(Math.random()*chars.length)];
+      ctx.fillText(text, i*14, drops[i]*14);
+      drops[i] = (drops[i]*14 > canvas.height && Math.random() > 0.975) ? 0 : drops[i]+1;
+    }
+  }
+  game.matrixHandle = setInterval(draw, 60);
+}
+function stopMatrixRain(){
+  if(game.matrixHandle){ clearInterval(game.matrixHandle); game.matrixHandle = null; }
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+/* ---- timers ---- */
+function startTimerLoop(){
+  if(game.timerHandle) clearInterval(game.timerHandle);
+  game.timerHandle = setInterval(()=>{
+    if(!game.started || game.over || game.paused) return;
+    if(game.freezeUntil && Date.now() < game.freezeUntil) return;
+    game.timer++;
+    if(game.timeLimit > 0 && game.timer >= game.timeLimit){ loseGame('time'); return; }
+    if(game.effects.tickingCore && game.firstClickDone){
+      const idleFor = (Date.now() - game.lastMoveTimestamp)/1000;
+      if(idleFor > 20){ toast('⚡ Ticking Core detonated — too slow!'); loseGame('ticking'); return; }
+    }
+    updateHud();
+  }, 1000);
+}
+
+let nanoBotsHandle=null, overdriveHandle=null;
+function startModifierTimers(){
+  if(nanoBotsHandle) clearInterval(nanoBotsHandle);
+  if(overdriveHandle) clearInterval(overdriveHandle);
+  if(game.effects.nanoBots){
+    nanoBotsHandle = setInterval(()=>{
+      if(!game.started || game.over || game.paused || !game.firstClickDone) return;
+      const spot = randomHiddenSafeCell();
+      if(spot){ floodReveal(spot[0], spot[1]); toast('🤖 Nano-Bots revealed a safe spot'); updateHud(); if(checkWinCondition()) winGame(); }
+    }, 45000);
+  }
+  if(game.effects.overdriveCore){
+    overdriveHandle = setInterval(()=>{
+      if(!game.started || game.over || game.paused) return;
+      const spot = game.firstClickDone ? randomHiddenCellAny() : [Math.floor(game.w/2), Math.floor(game.h/2)];
+      if(spot){ toast('⚡ Overdrive Core forced a click!'); performReveal(spot[0], spot[1]); }
+    }, 5000);
+  }
+}
+
+/* ---- scoring + HUD ---- */
+function liveScore(){
+  const modsMult = combinedModifierMultiplier();
+  return game.tilesRevealed * 10 * (game.diffSpec.diffMult||1) * modsMult;
+}
+function updateHud(){
+  const minesLeft = game.mineCount - game.flagsPlaced;
+  document.getElementById('hudMines').textContent = game.effects.blindFaith ? '?' : minesLeft;
+  document.getElementById('hudTiles').textContent = game.tilesRevealed;
+  document.getElementById('hudScore').textContent = Math.round(liveScore());
+  const timerEl = document.getElementById('hudTimer');
+  if(game.effects.eternityLock){ timerEl.textContent = '∞'; timerEl.parentElement.classList.remove('warn'); }
+  else if(game.timeLimit > 0){
+    const remaining = Math.max(0, game.timeLimit - game.timer);
+    timerEl.textContent = String(remaining).padStart(3,'0');
+    timerEl.parentElement.classList.toggle('warn', remaining <= 10);
+  } else {
+    timerEl.textContent = String(game.timer).padStart(3,'0');
+    timerEl.parentElement.classList.remove('warn');
+  }
+}
+
+/* ---- win / lose ---- */
+function stopAllTimers(){
+  if(game.timerHandle) clearInterval(game.timerHandle);
+  if(nanoBotsHandle) clearInterval(nanoBotsHandle);
+  if(overdriveHandle) clearInterval(overdriveHandle);
+}
+
+function finalScoreBreakdown(won){
+  const modsMult = combinedModifierMultiplier();
+  const diffMult = game.diffSpec.diffMult || 1;
+  const base = game.tilesRevealed * 10;
+  const afterDiff = base * diffMult;
+  const afterMods = afterDiff * modsMult;
+  let timeBonus = 0;
+  if(won && game.timeLimit > 0) timeBonus = Math.max(0, game.timeLimit - game.timer) * 2;
+  const winBonus = won ? 500 : 0;
+  const total = Math.round(afterMods + timeBonus + winBonus);
+  return { base, diffMult, modsMult, afterMods, timeBonus, winBonus, total };
+}
+
+function winGame(){
+  if(game.over) return;
+  game.over = true;
+  stopAllTimers();
+  stopMatrixRain();
+  if(state.settings.soundOn) beep(660,0.15);
+  showEndModal(true);
+}
+function loseGame(reason){
+  if(game.over) return;
+  game.over = true;
+  stopAllTimers();
+  stopMatrixRain();
+  if(state.settings.soundOn) beep(110,0.3);
+  showEndModal(false, reason);
+}
+
+function showEndModal(won, reason){
+  const breakdown = finalScoreBreakdown(won);
+  game.lastBreakdown = breakdown; game.lastWon = won;
+  const modal = document.getElementById('endModal');
+  document.getElementById('endTitle').textContent = won ? 'You Win' : 'Boom.';
+  document.getElementById('endTitle').className = won ? 'win' : 'lose';
+  let subtitle = won ? 'Board fully cleared.' : 'You hit a mine.';
+  if(reason === 'time') subtitle = 'Time limit reached.';
+  if(reason === 'ticking') subtitle = 'Ticking Core detonated — too slow on one move.';
+  document.getElementById('endSubtitle').textContent = subtitle;
+  document.getElementById('scoreBreakdown').innerHTML = `
+    <div><span>Tiles cleared</span><b>${game.tilesRevealed} × 10</b></div>
+    <div><span>Difficulty (${game.diffSpec.label})</span><b>×${breakdown.diffMult.toFixed(2)}</b></div>
+    <div><span>Modifier multiplier (${game.mods.length} active)</span><b>×${breakdown.modsMult.toFixed(2)}</b></div>
+    ${breakdown.timeBonus>0?`<div><span>Time bonus</span><b>+${breakdown.timeBonus}</b></div>`:''}
+    ${breakdown.winBonus>0?`<div><span>Clear bonus</span><b>+${breakdown.winBonus}</b></div>`:''}
+    <div class="total"><span>Final Score</span><b>${breakdown.total}</b></div>
+  `;
+  document.getElementById('nameInput').value = '';
+  document.getElementById('btnSubmitScore').disabled = false;
+  document.getElementById('btnSubmitScore').textContent = 'Submit';
+  modal.classList.add('show');
+}
+
+document.getElementById('btnSubmitScore').addEventListener('click', async ()=>{
+  const nameInput = document.getElementById('nameInput');
+  const name = (nameInput.value || 'Anonymous').trim().slice(0,18) || 'Anonymous';
+  await addLeaderboardEntry(name, game.lastBreakdown.total, state.difficulty, game.mods.length, game.lastWon);
+  document.getElementById('btnSubmitScore').disabled = true;
+  document.getElementById('btnSubmitScore').textContent = 'Saved ✓';
+  toast('Score saved to leaderboard');
+});
+
+document.getElementById('btnPlayAgain').addEventListener('click', ()=>{
+  document.getElementById('endModal').classList.remove('show');
+  startMatch();
+});
+document.getElementById('btnToMenu').addEventListener('click', ()=>{
+  document.getElementById('endModal').classList.remove('show');
+});
+
+/* ---- pause / forfeit / quit-match ---- */
+document.getElementById('btnPause').addEventListener('click', ()=>{
+  if(!game.started || game.over) return;
+  game.paused = true;
+  document.getElementById('pauseModal').classList.add('show');
+});
+document.getElementById('btnResume').addEventListener('click', ()=>{
+  game.paused = false;
+  document.getElementById('pauseModal').classList.remove('show');
+});
+document.getElementById('btnForfeit').addEventListener('click', ()=>{
+  game.paused = false;
+  document.getElementById('pauseModal').classList.remove('show');
+  game.over = true;
+  stopAllTimers(); stopMatrixRain();
+  showEndModal(false, 'forfeit');
+  document.getElementById('endSubtitle').textContent = 'Match forfeited.';
+});
+document.getElementById('btnQuitMatch').addEventListener('click', ()=>{
+  if(game.started && !game.over){
+    if(!confirm('Forfeit this match and return to the menu?')) return;
+    stopAllTimers(); stopMatrixRain(); game.over = true;
+  }
+  goTo('title');
+});
+
+/* ---- master key / data retrieval buttons ---- */
+document.getElementById('btnMasterKey').addEventListener('click', ()=>{
+  if(game.masterKeyUsed || game.over) return;
+  game.masterKeyUsed = true;
+  const btn = document.getElementById('btnMasterKey');
+  btn.disabled = true; btn.textContent = '⚡ Master Key Used';
+  const spot = game.firstClickDone ? randomHiddenSafeCell() : randomHiddenCellAny();
+  if(spot){ performReveal(spot[0], spot[1]); toast('🔑 Master Key revealed a guaranteed safe tile'); }
+});
+
+document.getElementById('btnStartMatch').addEventListener('click', ()=>{
+  if(state.difficulty === 'custom' && (state.custom.w < 5 || state.custom.h < 5)){
+    toast('Board must be at least 5×5'); return;
+  }
+  startMatch();
+});
+
+/* =====================================================================
+   LEADERBOARD  (saved on this device)
+===================================================================== */
+async function getLeaderboard(){ return await storeGet('leaderboard', []); }
+async function addLeaderboardEntry(name, score, difficulty, modCount, won){
+  const board = await getLeaderboard();
+  board.push({ name, score, difficulty, modCount, won, date: new Date().toISOString() });
+  board.sort((a,b)=>b.score-a.score);
+  await storeSet('leaderboard', board.slice(0,200));
+}
+let lbFilter = 'all';
+async function renderLeaderboard(){
+  const wrap = document.getElementById('lbTableWrap');
+  wrap.innerHTML = '<div class="lb-empty">Loading…</div>';
+  let board = await getLeaderboard();
+  if(lbFilter !== 'all') board = board.filter(e=>e.difficulty === lbFilter);
+  board.sort((a,b)=>b.score-a.score);
+  if(board.length === 0){
+    wrap.innerHTML = '<div class="lb-empty"><div class="big">▫︎</div>No scores yet — go clear some mines.</div>';
+    return;
+  }
+  const rows = board.slice(0,100).map((e,i)=>{
+    const rankClass = i===0?'top1':i===1?'top2':i===2?'top3':'';
+    const d = new Date(e.date);
+    return `<tr>
+      <td class="lb-rank ${rankClass}">#${i+1}</td>
+      <td>${escapeHtml(e.name)}</td>
+      <td class="lb-score">${e.score}</td>
+      <td><span class="chip ${e.difficulty==='custom'?'cosmetic':e.difficulty==='hard'?'hazard':e.difficulty==='medium'?'timewarp':'assist'}">${e.difficulty}</span></td>
+      <td>${e.modCount}</td>
+      <td>${e.won ? '🏆 Win' : '💀 Loss'}</td>
+      <td style="color:var(--text-3);font-size:12px;">${d.toLocaleDateString()}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table class="lb-table">
+    <thead><tr><th>#</th><th>Name</th><th>Score</th><th>Mode</th><th>Mods</th><th>Result</th><th>Date</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+document.getElementById('lbFilters').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-lbfilter]'); if(!btn) return;
+  document.querySelectorAll('#lbFilters .sort-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  lbFilter = btn.getAttribute('data-lbfilter');
+  renderLeaderboard();
+});
+document.getElementById('btnClearLb').addEventListener('click', async ()=>{
+  if(!confirm('Clear all locally saved leaderboard scores? This cannot be undone.')) return;
+  await storeSet('leaderboard', []);
+  renderLeaderboard();
+  toast('Leaderboard cleared');
+});
+
+/* =====================================================================
+   SETTINGS SCREEN
+===================================================================== */
+function settingRowToggle(key, label, desc){
+  return `<div class="setting-row">
+    <div><div class="label">${label}</div><div class="desc">${desc}</div></div>
+    <label class="switch"><input type="checkbox" data-setting="${key}" ${state.settings[key]?'checked':''}><span class="track"></span></label>
+  </div>`;
+}
+function settingRowSegment(key, label, desc, options){
+  const segs = options.map(o=>`<button data-setting="${key}" data-value="${o.value}" class="${state.settings[key]===o.value?'active':''}">${o.label}</button>`).join('');
+  return `<div class="setting-row">
+    <div><div class="label">${label}</div><div class="desc">${desc}</div></div>
+    <div class="seg" data-segment="${key}">${segs}</div>
+  </div>`;
+}
+function settingRowRange(key, label, desc, min, max){
+  return `<div class="setting-row">
+    <div><div class="label">${label}</div><div class="desc">${desc}</div></div>
+    <div class="range-row"><input type="range" min="${min}" max="${max}" value="${state.settings[key]}" data-setting-range="${key}"><span class="val" data-range-val="${key}">${state.settings[key]}</span></div>
+  </div>`;
+}
+
+function renderSettings(){
+  const c = document.getElementById('settingsContent');
+  c.innerHTML = `
+    <div class="settings-section">
+      <h3>Audio</h3>
+      ${settingRowToggle('soundOn','Sound effects','Beeps, blips, and modifier sound cues.')}
+      ${settingRowRange('volume','Volume','Affects all in-game sound effects.',0,100)}
+    </div>
+    <div class="settings-section">
+      <h3>Display</h3>
+      ${settingRowSegment('theme','Color theme','Swap the overall panel tint.',[{value:'void',label:'Void'},{value:'midnight',label:'Midnight'},{value:'highcontrast',label:'High Contrast'}])}
+      ${settingRowToggle('animations','Interface animations','Hover/press motion on buttons and panels.')}
+      ${settingRowToggle('reduceMotion','Reduce motion','Minimizes screen transitions and shake effects for comfort.')}
+      ${settingRowToggle('largeText','Larger text','Increases base font size across every screen.')}
+    </div>
+    <div class="settings-section">
+      <h3>Gameplay</h3>
+      ${settingRowSegment('leftClickMode','Left-click action','Choose whether left click reveals or flags (right click does the other).',[{value:'reveal',label:'Reveal'},{value:'flag',label:'Flag'}])}
+      ${settingRowToggle('confirmFlag','Confirm before flagging','Adds a confirmation prompt before placing a flag.')}
+      ${settingRowToggle('safeFirstClick','Guarantee safe first click','Your very first click is never a mine.')}
+      ${settingRowToggle('showTimer','Show match timer','Hide this if you prefer an untimed, low-pressure feel.')}
+    </div>
+    <div class="settings-section">
+      <h3>Accessibility</h3>
+      ${settingRowToggle('colorblindNumbers','Colorblind-friendly numbers','Uses shape + higher-contrast palette instead of hue alone.')}
+    </div>
+    <div class="settings-section">
+      <h3>Data</h3>
+      <div class="setting-row"><div><div class="label">Clear favorited modifiers</div><div class="desc">Removes every modifier you've starred.</div></div>
+        <button class="btn small danger" id="btnClearFavs">Clear</button></div>
+      <div class="setting-row"><div><div class="label">Clear leaderboard</div><div class="desc">Deletes every saved score on this device.</div></div>
+        <button class="btn small danger" id="btnClearLbInSettings">Clear</button></div>
+    </div>
+  `;
+
+  c.querySelectorAll('input[data-setting]').forEach(input=>{
+    input.addEventListener('change', ()=>{
+      state.settings[input.dataset.setting] = input.checked;
+      applySettingsToDOM(); saveSettings();
+    });
+  });
+  c.querySelectorAll('[data-segment]').forEach(seg=>{
+    seg.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const key = btn.dataset.setting, val = btn.dataset.value;
+        state.settings[key] = val;
+        seg.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        applySettingsToDOM(); saveSettings();
+      });
+    });
+  });
+  c.querySelectorAll('input[data-setting-range]').forEach(input=>{
+    input.addEventListener('input', ()=>{
+      const key = input.dataset.settingRange;
+      state.settings[key] = parseInt(input.value,10);
+      c.querySelector(`[data-range-val="${key}"]`).textContent = input.value;
+      saveSettings();
+    });
+  });
+  const cf = document.getElementById('btnClearFavs');
+  if(cf) cf.addEventListener('click', async ()=>{
+    if(!confirm('Clear all favorited modifiers?')) return;
+    state.favorites = new Set(); await saveFavorites(); toast('Favorites cleared');
+  });
+  const clbs = document.getElementById('btnClearLbInSettings');
+  if(clbs) clbs.addEventListener('click', async ()=>{
+    if(!confirm('Clear all locally saved leaderboard scores?')) return;
+    await storeSet('leaderboard', []); toast('Leaderboard cleared');
+  });
+}
+
+document.getElementById('btnResetSettings').addEventListener('click', async ()=>{
+  if(!confirm('Reset all settings to default?')) return;
+  state.settings = defaultSettings();
+  applySettingsToDOM(); await saveSettings(); renderSettings();
+  toast('Settings reset');
+});
+
+/* =====================================================================
+   TITLE SCREEN — ambient decorative minesweeper grid
+===================================================================== */
+function buildAmbientGrid(){
+  const grid = document.getElementById('ambientGrid');
+  const cols = 10, rows = 5;
+  grid.innerHTML = '';
+  const cells = [];
+  for(let i=0;i<cols*rows;i++){
+    const el = document.createElement('div');
+    el.className = 'ambient-cell';
+    grid.appendChild(el);
+    cells.push(el);
+  }
+  function tick(){
+    cells.forEach(c=>{
+      if(Math.random() < 0.06){
+        const r = Math.random();
+        if(r < 0.7){ c.textContent = Math.random()<0.5 ? '' : (Math.floor(Math.random()*4)+1); c.style.color = 'var(--text-3)'; c.style.borderColor='var(--line-soft)'; }
+        else if(r < 0.92){ c.textContent='⚑'; c.style.color='var(--cat-hazard)'; }
+        else { c.textContent='✸'; c.style.color='var(--amber)'; c.style.borderColor='var(--amber)'; }
+      } else if(Math.random() < 0.02){
+        c.textContent=''; c.style.color='var(--text-3)'; c.style.borderColor='var(--line-soft)';
+      }
+    });
+  }
+  setInterval(tick, 700);
+}
+
+/* =====================================================================
+   QUIT — best-effort tab close with a graceful fallback
+===================================================================== */
+document.getElementById('btnQuit').addEventListener('click', ()=>{
+  if(!confirm('Quit MINESWEEPER: RELOADED?')) return;
+  const veil = document.getElementById('shutdown-veil');
+  veil.classList.add('show');
+  let dots = 0;
+  const lines = ['SAVING LOCAL DATA','POWERING DOWN GRID','FLUSHING BUFFERS'];
+  let li = 0;
+  const txt = document.getElementById('shutdownText');
+  const seq = setInterval(()=>{
+    if(li < lines.length){ txt.innerHTML = lines[li] + '...'; li++; }
+    else {
+      clearInterval(seq);
+      txt.innerHTML = 'SYSTEM HALTED.<br>You can close this tab now.';
+      window.close();
+    }
+  }, 500);
+});
+
+/* =====================================================================
+   INIT
+===================================================================== */
+async function init(){
+  await loadPersisted();
+  buildAmbientGrid();
+  renderModList();
+  updateSummaryBar();
+}
+init();
+</script>
+
+</body>
+</html>
